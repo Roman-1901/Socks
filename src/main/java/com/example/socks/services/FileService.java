@@ -21,6 +21,8 @@ public class FileService {
         return new File(filePath + "/" + fileName);
     }
 
+
+
     public void saveFile(String json) {
         cleanFile();
         try {
@@ -29,6 +31,8 @@ public class FileService {
             e.printStackTrace();
         }
     }
+
+
 
     public String readFromFile() {
         try {

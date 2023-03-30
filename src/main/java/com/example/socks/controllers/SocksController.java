@@ -84,12 +84,14 @@ public class SocksController {
     }
     )
     public ResponseEntity<String> showSocks(@RequestParam Color color, @RequestParam Size size, @RequestParam int cottonMin, @RequestParam int cottonMax) {
-        String get = socksService.getSocks(color, size, cottonMin, cottonMax);
+        Integer get = socksService.getSocks(color, size, cottonMin, cottonMax);
         if (get == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok().body(get);
+        return ResponseEntity.ok().body("Носки: цвет - " + color.getNameColor() + ", размер - " + size.getSizeNum() + " см, минимальный процент хлопка - " + cottonMin + "%, максимальный процент хлопка - " + cottonMax + "%.  \n" +
+                "Количество на складе: " + get + " шт.");
     }
+
 
 
     @PutMapping()
@@ -103,7 +105,10 @@ public class SocksController {
     )
     @ApiResponses(value = {
             @ApiResponse(
-                    responseCode = "200", description = "удалось произвести отпуск носков со склада, либо товара нет на складе"
+                    responseCode = "200", description = "удалось произвести отпуск носков со склада"
+            ),
+            @ApiResponse(
+                    responseCode = "204", description = "информация отсутствует, либо превышено количество носков, имеющихся на складе"
             ),
             @ApiResponse(
                     responseCode = "400", description = "параметры запроса имеют некорректный формат"
@@ -117,11 +122,12 @@ public class SocksController {
     }
     )
     public ResponseEntity<String> PuttingSocks(@RequestBody Socks socks, @RequestParam int quantity) {
-        String put = socksService.putSocks(socks, quantity);
+        Integer put = socksService.putOrDeleteSocks(socks, quantity);
         if (put == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok().body(put);
+        return ResponseEntity.ok().body("Носки: цвет - " + socks.getColor().getNameColor() + ", размер - " + socks.getSize().getSizeNum() + " см. Отпущено со склада - " + quantity + " пар.\n" +
+                "Количество на складе: " + put + " шт.");
     }
 
     @DeleteMapping()
@@ -138,6 +144,9 @@ public class SocksController {
                     responseCode = "200", description = "товар списан со склада, либо товара нет на складе"
             ),
             @ApiResponse(
+                    responseCode = "204", description = "информация отсутствует, либо превышено количество носков, имеющихся на складе"
+            ),
+            @ApiResponse(
                     responseCode = "400", description = "параметры запроса имеют некорректный формат"
             ),
             @ApiResponse(
@@ -149,11 +158,12 @@ public class SocksController {
     }
     )
     public ResponseEntity<String> DelSocks(@RequestBody Socks socks, @RequestParam int quantity) {
-        String del = socksService.deleteSocks(socks, quantity);
+        Integer del = socksService.putOrDeleteSocks(socks, quantity);
         if (del == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok().body(del);
+        return ResponseEntity.ok().body("Носки: цвет - " + socks.getColor().getNameColor() + ", размер - " + socks.getSize().getSizeNum() + " см. Удалено со склада - " + quantity + " пар.\n" +
+                "Количество на складе: " + del + " шт.");
     }
 
 }

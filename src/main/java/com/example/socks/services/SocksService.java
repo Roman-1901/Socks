@@ -1,5 +1,6 @@
 package com.example.socks.services;
 
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,11 +10,13 @@ import com.example.socks.model.Socks;
 import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class SocksService {
-    private Map<Socks, Integer> socksMap = new HashMap<>();
+    private HashMap<Socks, Integer> socksMap = new HashMap<>();
 
     private final FileService fileService;
 
@@ -21,11 +24,18 @@ public class SocksService {
         this.fileService = fileService;
     }
 
+    private Integer getSocks(Socks socks) {
+            return socksMap.get(socks);
+    }
+
     public String postSocks(Socks socks, int quantity) {
         if (quantity > 0 && socks.getCottonPart() >= 0) {
-            socksMap.computeIfPresent(socks, (k, v) -> v + quantity);
-            if (!socksMap.containsKey(socks)) {
+            Integer count = getSocks(socks);
+            if (count == null) {
                 socksMap.put(socks, quantity);
+            } else {
+                count += quantity;
+                socksMap.put(socks, count);
             }
             saveToFile();
             return "Носки: цвет - " + socks.getColor().getNameColor() + ", размер - " + socks.getSize().getSizeNum() + " см, процент хлопка - " + socks.getCottonPart() + ", количество пар - " + quantity + " . Добавлены на склад";
@@ -34,7 +44,7 @@ public class SocksService {
     }
 
 
-    public String getSocks(Color color, Size size, int cottonMin, int cottonMax) {
+    public Integer getSocks(Color color, Size size, int cottonMin, int cottonMax) {
         int count = 0;
         if (cottonMin >= 0 && cottonMax >= 0 && cottonMax >= cottonMin) {
             for (Map.Entry<Socks, Integer> entry : socksMap.entrySet()) {
@@ -42,50 +52,28 @@ public class SocksService {
                     count += entry.getValue();
                 }
             }
-            return "Носки: цвет - " + color.getNameColor() + ", размер - " + size.getSizeNum() + " см, минимальный процент хлопка - " + cottonMin + "%, максимальный процент хлопка - " + cottonMax + "%.  \n" +
-                    "Количество на складе: " + count + " шт.";
+            return count;
         }
         return null;
     }
 
-    public String putSocks(Socks socks, int quantity) {
+    //Я подумал, что здесь имеет смысл объединить PUT и DELETE в один метод, т.к. по сути функционал у них одинаковый.
+    public Integer putOrDeleteSocks(Socks socks, int quantity) {
         if (quantity > 0 && socksMap.containsKey(socks)) {
             int number = socksMap.get(socks) - quantity;
             if (number > 0) {
                 socksMap.put(socks, number);
                 saveToFile();
-                return "Носки: цвет - " + socks.getColor().getNameColor() + ", размер - " + socks.getSize().getSizeNum() + " см. Отпущено со склада - " + quantity + " пар.\n" +
-                        "Количество на складе: " + number + " шт.";
+                return number;
             } else if (number == 0) {
                 socksMap.remove(socks);
                 saveToFile();
-                return "Носки: цвет - " + socks.getColor().getNameColor() + ", размер - " + socks.getSize().getSizeNum() + " см. Отпущено со склада - " + quantity + " пар.\n" +
-                        "Количество на складе: 0 шт.";
+                return number;
             } else
-                return "По данным параметрам носки отсутствуют, либо в запросе количество указано больше, чем имеется на складе";
+                return null;
         }
         return null;
     }
-
-    public String deleteSocks(Socks socks, int quantity) {
-        if (quantity > 0 && socksMap.containsKey(socks)) {
-            int number = socksMap.get(socks) - quantity;
-            if (number > 0) {
-                socksMap.put(socks, number);
-                saveToFile();
-                return "Носки: цвет - " + socks.getColor().getNameColor() + ", размер - " + socks.getSize().getSizeNum() + " см. Удалено со склада - " + quantity + " пар.\n" +
-                        "Количество на складе: " + number + " шт.";
-            } else if (number == 0) {
-                socksMap.remove(socks);
-                saveToFile();
-                return "Носки: цвет - " + socks.getColor().getNameColor() + ", размер - " + socks.getSize().getSizeNum() + " см. Удалено со склада - " + quantity + " пар.\n" +
-                        "Количество на складе: 0 шт.";
-            } else
-                return "По данным параметрам носки отсутствуют, либо в запросе количество указано больше, чем имеется на складе";
-        }
-        return null;
-    }
-
 
 
     private void saveToFile() {
@@ -99,13 +87,14 @@ public class SocksService {
 
 
     // Данный метод чтения из файла к сожалению не работает, возможно это связано с тем, что объект Socks обозначен как ключ, а не как значение
-    //   @PostConstruct
+//    @PostConstruct
     private void readFromFile() {
         try {
             String json = fileService.readFromFile();
             socksMap = new ObjectMapper().readValue(json, new TypeReference<HashMap<Socks, Integer>>() {
             });
         } catch (JsonProcessingException e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
